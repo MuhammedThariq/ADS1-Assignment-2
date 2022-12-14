@@ -91,9 +91,7 @@ def getfile(filename):
     #returning transposed dataframe and original dataframe.
     return df_worldbank2, df_worldbank
              
-            
-   
-          
+                     
 def data_trim(dataframe):
     """This function takes dataframe as an argument and trims the dataframe
     that satisfies a given condition and filters out only the required 
