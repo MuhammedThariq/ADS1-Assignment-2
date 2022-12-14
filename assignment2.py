@@ -12,8 +12,88 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import seaborn as sb
 
- 
+
 #defining functions
+def getfile(filename):
+    """ This function takes file name as an argument. Read the file into a 
+    dataframe and perform transposing of dataframe to transform countries into 
+    columns. Finally returns the original dataframe and transposed 
+    dataframe."""
+    # Reading the csv file into a dataframe
+    df_worldbank = pd.read_csv(filename) 
+    df_worldbank1 = []
+    #Creating another dataframe with coulmns Year, Indicator Name, and 
+    #indicator code. 
+    df_worldbank1 = pd.DataFrame(data=df_worldbank1, 
+                                 columns=['Year', 'Indicator Name', 
+                                          'Indicator Code'])
+    #Storing the year values as cumcount of the indicator code.
+    df_worldbank1['Year'] = df_worldbank.groupby( 
+        ['Indicator Code']).cumcount().add(1)
+    #Creating a for loop to replace cumcount values in the year column with
+    #actual year values
+    n=1960
+    for i in range(1,267):
+        for value in df_worldbank1['Year']:
+            if value == i:
+                df_worldbank1['Year'] = df_worldbank1['Year'].replace(value, n)
+        n=n+1
+    # creating another dataframe df_worldbank2 and copying df_worldbank1 to it.  
+    df_worldbank2 = df_worldbank1.iloc[:4712, :].copy()
+    # populating columns indicator name and indicator code of df_worldbank2
+    #with df_worldbank column values.
+    df_worldbank2['Indicator Name'] = df_worldbank.iloc[:4712, [2]]    
+    df_worldbank2['Indicator Code'] = df_worldbank.iloc[:4712, [3]]
+    #Getting the unique values from the column Country Name of df_worldbank
+    #and creating a list country of it.
+    country = []
+    for value in df_worldbank['Country Name']:
+        if value not in country:
+            country.append(value)
+    #Getting the column from the 4 the column of df_worldbank and creating
+    #a list (list of years) 
+    Year_list = []
+    for value in df_worldbank.columns[4:].values:
+        Year_list.append(value)
+    #Creating a list indicator_value and using for loop to fetch the indicator
+    #values of each country in each year and storing it in the indicator_value
+    #list
+    indicator_value = []
+    for country_name in country:
+        for year in Year_list:
+            indicator_value.append(df_worldbank[year]. 
+                                   loc[df_worldbank["Country Name"]== 
+                                       country_name])
+    #Getting the uniques values from the column indicator code and 
+    #creating a list out of it.    
+    indicator_code = []
+    for value in df_worldbank2['Indicator Code']:
+        if value not in indicator_code:
+            indicator_code.append(value)
+    #Creating an empty dataframe with columns as names of the countries  from
+    #the country list     
+    df_country = []
+    df_country = pd.DataFrame(data=df_country, columns=country)   
+    #Concatenating df_country with df_worldbank2 with axis=1 so that the 
+    #dataframe df_worldbank2 contains the columns Years, Indicator Name, 
+    #Indicator code and the list of countries.
+    df_worldbank2 = pd.concat([df_worldbank2, df_country], axis=1)
+    #Using for loop to populate each countries columns with its indicators 
+    #value in each year.
+    j=0
+    for value in country:
+        n=0
+        for i in range(len(indicator_code), df_worldbank2.shape[0]+1, 
+                       len(indicator_code)):
+            df_worldbank2[value].iloc[n:i] = indicator_value[j]
+            n = i
+            j=j+1
+    #returning transposed dataframe and original dataframe.
+    return df_worldbank2, df_worldbank
+             
+            
+   
+          
 def data_trim(dataframe):
     """This function takes dataframe as an argument and trims the dataframe
     that satisfies a given condition and filters out only the required 
@@ -45,17 +125,11 @@ def data_clean2(dataframe):
 
 def statistics(dataframe):
     """This function takes the dataframe as an argument and find the skewness
-    and calculates the bootstrap errors for average."""
+    and kurtosis of the distribution."""
     print("skewness = ")
     print(stats.skew(dataframe))
-    print()
-    print("bootstrap = ")
-    aver = np.mean(dataframe)
-    low, high = stats.bootstrap(dataframe, np.mean, 
-                                    confidence_level=0.95)
-    sigma = 0.5 * (high - low)
-    print("Average = ", np.round(aver, 3), "+/-", np.round(sigma, 3), 
-    "  significance = ",np.round(aver/sigma, 3))
+    print("kurtosis = ")
+    print(stats.kurtosis(dataframe))
 
 
 def outlier(df):
@@ -92,8 +166,8 @@ def normalise(dataframe):
     return dataframe     
 
 
-df_wb = pd.read_csv("worldbank.csv")
-df_wb = df_wb.drop("Unnamed: 0", axis=1)
+#Calling the getfile function with the filename as argument.
+df_wb, df_wb2 = getfile("API_19_DS2_en_csv_v2_4700503.csv")
 
 #Using group by function to group the data on the basis of the Indicator code
 #and getting the data of a specific indicator, NO2 emmission.    
@@ -103,7 +177,9 @@ df_no2 = data_trim(df_no2)
 #Calling the data_clean2 function.
 df_no2 = data_clean2(df_no2)
 #Calling the statistics function
-statistics(df_no2['India'])
+UK_no2 = normalise(df_no2['United Kingdom'])
+print("Skewness and kurtosis of United Kingdom in NO2 emission")
+statistics(UK_no2)
 
 #Using group by function to group the data on the basis of the Indicator code
 #and getting the data of a specific indicator, Cereal Yield.
@@ -236,5 +312,11 @@ clean_df_rnwable.plot("Year", ['Bangladesh', 'Brazil', 'China', 'France',
                       figsize=(10,7))
 plt.ylabel("Percentage of consumption")
 plt.title("Renewable energy consumption")
+plt.show()
+
+#Using a histogram to plot the distribution of No2 emission in United Kingdom
+plt.figure(dpi=144)
+plt.hist(UK_no2, bins=4)
+plt.title("NO2 emission of United Kingdom")
 plt.show()
 
